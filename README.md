@@ -48,13 +48,13 @@
 
 ```bash
 git clone https://github.com/prakhar-developer/quro.io
-cd Research-assistant
+cd quro.io
 ```
 ---
 ### 2. 🖥 Backend (FastAPI)
 
 ```bash
-cd beckend
+cd backend
 python -m venv .venv
 source .venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -70,7 +70,7 @@ HUGGINGFACEHUB_API_TOKEN=your-access-token
 ### 3. 🌐 Frontend (React)
 
 ```bash
-cd frontend  # or client if renamed
+ # or client if renamed
 npm install
 npm run dev
 ```
@@ -78,14 +78,14 @@ npm run dev
 ## 📁 Project Structure
 
 ```bash
-Research-assistant/
-├── beckend/                # FastAPI backend
+quro.io/
+├── backend/                # FastAPI backend
 │   ├── routes/             # API route handlers
 │   ├── utils/              # Utility functions (e.g., PDF parsing)
-│   └── main.py             # Entry point for FastAPI
+│   └── main.py
+├── requirements.txt        # Python dependencies             # Entry point for FastAPI
 ├── src/
 │   ├── components/         # React frontend components
 │   └── App.tsx         # Root React component
-├── requirements.txt        # Python dependencies
 ├── README.md               # Project documentation
 ```
