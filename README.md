@@ -23,7 +23,7 @@
 
 | Upload PDF | Summary View |Challenge ME |
 |------------|---------------|---------------|
-| ![upload](public/asset/image2.png) | ![summary](public/asset/research.png) | ![Challenge Me](public/asset/image3.png) |
+| ![upload](public/asset/image1.png) | ![summary](public/asset/image2.png) | ![Challenge Me](public/asset/image3.png) |
 
 ---
 
