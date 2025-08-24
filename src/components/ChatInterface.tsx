@@ -42,13 +42,14 @@ export default function ChatInterface({ fileName, fileContent }: ChatInterfacePr
     formData.append("question", question);
     formData.append("fileContent", content); // Optional: your backend can ignore or use it
 
-    const response = await axios.post("http://localhost:8000/api/assistant/ask", formData, {
+    const response = await axios.post(`${import.meta.env.VITE_BACKEND_API}/assistant/ask`,formData, {
       headers: {
         "Content-Type": "multipart/form-data"
       }
     });
 
-    return response.data.answer || "I'm sorry, I couldn't generate a response.";
+    const data = response.data as { answer?: string };
+    return data.answer || "I'm sorry, I couldn't generate a response.";
   } catch (error) {
     console.error("API error:", error);
     return "⚠️ Unable to connect to the assistant. Please try again later.";
