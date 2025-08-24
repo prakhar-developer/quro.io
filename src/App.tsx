@@ -25,7 +25,7 @@ function App() {
       formData.append('file', file);
 
       // ✅ Backend URL from env
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_API}/api/assistant/upload`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_API}api/assistant/upload`, {
         method: 'POST',
         body: formData,
       });
