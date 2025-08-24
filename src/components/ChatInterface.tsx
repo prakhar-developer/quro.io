@@ -42,7 +42,7 @@ export default function ChatInterface({ fileName, fileContent }: ChatInterfacePr
     formData.append("question", question);
     formData.append("fileContent", content); // Optional: your backend can ignore or use it
 
-    const response = await axios.post(`${import.meta.env.VITE_BACKEND_API}assistant/ask`,formData, {
+    const response = await axios.post(`${import.meta.env.VITE_BACKEND_API}api/assistant/ask`,formData, {
       headers: {
         "Content-Type": "multipart/form-data"
       }
