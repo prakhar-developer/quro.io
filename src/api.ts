@@ -10,7 +10,7 @@ export const uploadFileToBackend = async (file: File) => {
   formData.append('file', file);
 
   const response = await axios.post<UploadResponse>(
-    `${API_BASE}/assistant/upload`,
+    `${API_BASE}/api/assistant/upload`,
     formData,
     {
       headers: {
@@ -28,7 +28,7 @@ export const generateChallengeQuestions = async (text: string) => {
 
   type GenerateQuestionsResponse = { questions: string[] };
   const response = await axios.post<GenerateQuestionsResponse>(
-    `${API_BASE}/challenge/generate-questions`,
+    `${API_BASE}/api/challenge/generate-questions`,
     formData
   );
   return response.data.questions;
