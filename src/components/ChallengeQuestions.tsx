@@ -1,4 +1,4 @@
-import  { useState } from 'react';
+import React, { useState } from 'react';
 import { Brain, ChevronRight, Check, X, Trophy } from 'lucide-react';
 
 export interface Question {
@@ -13,7 +13,7 @@ export interface ChallengeQuestionsProps {
   isGenerating: boolean;
 }
 
-export default function ChallengeQuestions({ questions }: ChallengeQuestionsProps) {
+export default function ChallengeQuestions({ questions, isGenerating }: ChallengeQuestionsProps) {
   // Defensive filter for malformed questions
   const questionArray = Array.isArray(questions)
     ? questions.filter(
