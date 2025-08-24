@@ -28,6 +28,7 @@ export default function FileUpload({ onFileUpload, isProcessing }: FileUploadPro
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFile(e.dataTransfer.files[0]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {

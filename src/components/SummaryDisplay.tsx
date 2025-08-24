@@ -50,11 +50,12 @@ export default function SummaryDisplay({ summary, fileName, fileContent, isGener
       formData.append("question", userQuestion);
       formData.append("fileContent", fileContent);
 
-      const response = await axios.post("http://localhost:8000/api/assistant/ask", formData, {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_API}api/assistant/ask`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
 
-      return response.data.answer || "I'm sorry, I couldn't generate a response.";
+      const data = response.data as { answer?: string };
+      return data.answer || "I'm sorry, I couldn't generate a response.";
     } catch (error) {
       console.error("API error:", error);
       return "⚠️ Unable to connect to the assistant. Please try again later.";
@@ -149,23 +150,19 @@ export default function SummaryDisplay({ summary, fileName, fileContent, isGener
           {/* Format summary with research sections if possible */}
           {(() => {
             // Try to split summary into research sections
-            const sectionRegex = /^(?:\*\*|__)?(Title|Objective|Methodology|Results|Conclusion)(?:\*\*|__)?\s*[:\-]?\s*/i;
+            const sectionRegex = /^(?:\*\*|__)?(Title|Objective|Methodology|Results|Conclusion)(?:\*\*|__)?\s*[:-]?\s*/i;
             if (sectionRegex.test(summary)) {
               const lines = summary.split(/\r?\n/);
               let currentSection = '';
-              let sections: { title: string, content: string[] }[] = [];
+              const sections: { title: string, content: string[] }[] = [];
               lines.forEach(line => {
                 // Match and clean both heading and content
-                const match = line.match(/^(?:\*\*|__)?(Title|Objective|Methodology|Results|Conclusion)(?:\*\*|__)?\s*[:\-]?\s*(.*)/i);
+                const match = line.match(/^(?:\*\*|__)?(Title|Objective|Methodology|Results|Conclusion)(?:\*\*|__)?\s*[:-]?\s*(.*)/i);
                 if (match) {
                   currentSection = match[1];
                   // Remove leading/trailing **, __, :, -, and whitespace from content
-                  let cleanContent = match[2].replace(/^(\*\*|__)+/, '').replace(/^[:\-]+/, '').trim();
-                  sections.push({ title: currentSection, content: [cleanContent] });
-                } else if (currentSection && sections.length) {
-                  // Remove leading markdown from continuation lines too
-                  let cleanLine = line.replace(/^(\*\*|__)+/, '').replace(/^[:\-]+/, '').trim();
-                  sections[sections.length - 1].content.push(cleanLine);
+                const cleanContent = match[2].replace(/^(\*\*|__)+/, '').replace(/^[:-]+/, '').trim();
+                sections.push({ title: currentSection, content: [cleanContent] });
                 }
               });
               return (
