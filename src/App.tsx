@@ -5,7 +5,7 @@ import FileUpload from './components/FileUpload';
 import SummaryDisplay from './components/SummaryDisplay';
 import ChallengeQuestions from './components/ChallengeQuestions';
 import type { Question } from './components/ChallengeQuestions';
-import axios from 'axios';
+
 
 function App() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -13,7 +13,6 @@ function App() {
   const [summary, setSummary] = useState<string>('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  // const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [activeTab, setActiveTab] = useState<'summary' | 'challenge'>('summary');
 
@@ -21,22 +20,21 @@ function App() {
     setUploadedFile(file);
     setFileContent(content);
     setIsProcessing(true);
-
     try {
-      // 🔁 Send file to backend as multipart/form-data
       const formData = new FormData();
-      formData.append("file", file); // ✅ must match FastAPI: file: UploadFile = File(...)
+      formData.append('file', file);
 
-      const response = await axios.post("http://localhost:8000/api/assistant/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      // ✅ Backend URL from env
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_API}/api/assistant/upload`, {
+        method: 'POST',
+        body: formData,
       });
 
-      setSummary((response.data as { summary: string }).summary); // ✅ set the summary from response
-    } catch (error) {
-      console.error("File upload failed:", error);
-      setSummary("⚠️ Failed to summarize document.");
+      const data = await response.json();
+      setSummary(data.summary || '⚠️ No summary returned.');
+    } catch (err) {
+      console.error('File upload failed:', err);
+      setSummary('⚠️ Failed to summarize document.');
     }
 
     setIsProcessing(false);
