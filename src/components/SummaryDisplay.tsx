@@ -54,8 +54,7 @@ export default function SummaryDisplay({ summary, fileName, fileContent, isGener
         headers: { "Content-Type": "multipart/form-data" }
       });
 
-      const data = response.data as { answer?: string };
-      return data.answer || "I'm sorry, I couldn't generate a response.";
+      return response.data.answer || "I'm sorry, I couldn't generate a response.";
     } catch (error) {
       console.error("API error:", error);
       return "⚠️ Unable to connect to the assistant. Please try again later.";
@@ -150,19 +149,23 @@ export default function SummaryDisplay({ summary, fileName, fileContent, isGener
           {/* Format summary with research sections if possible */}
           {(() => {
             // Try to split summary into research sections
-            const sectionRegex = /^(?:\*\*|__)?(Title|Objective|Methodology|Results|Conclusion)(?:\*\*|__)?\s*[:-]?\s*/i;
+            const sectionRegex = /^(?:\*\*|__)?(Title|Objective|Methodology|Results|Conclusion)(?:\*\*|__)?\s*[:\-]?\s*/i;
             if (sectionRegex.test(summary)) {
               const lines = summary.split(/\r?\n/);
               let currentSection = '';
-              const sections: { title: string, content: string[] }[] = [];
+              let sections: { title: string, content: string[] }[] = [];
               lines.forEach(line => {
                 // Match and clean both heading and content
-                const match = line.match(/^(?:\*\*|__)?(Title|Objective|Methodology|Results|Conclusion)(?:\*\*|__)?\s*[:-]?\s*(.*)/i);
+                const match = line.match(/^(?:\*\*|__)?(Title|Objective|Methodology|Results|Conclusion)(?:\*\*|__)?\s*[:\-]?\s*(.*)/i);
                 if (match) {
                   currentSection = match[1];
                   // Remove leading/trailing **, __, :, -, and whitespace from content
-                const cleanContent = match[2].replace(/^(\*\*|__)+/, '').replace(/^[:-]+/, '').trim();
-                sections.push({ title: currentSection, content: [cleanContent] });
+                  let cleanContent = match[2].replace(/^(\*\*|__)+/, '').replace(/^[:\-]+/, '').trim();
+                  sections.push({ title: currentSection, content: [cleanContent] });
+                } else if (currentSection && sections.length) {
+                  // Remove leading markdown from continuation lines too
+                  let cleanLine = line.replace(/^(\*\*|__)+/, '').replace(/^[:\-]+/, '').trim();
+                  sections[sections.length - 1].content.push(cleanLine);
                 }
               });
               return (
