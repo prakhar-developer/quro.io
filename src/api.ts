@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 
-const API_BASE = import.meta.env.BACKEND_API;
+const API_BASE = import.meta.env.VITE_BACKEND_API;
 
 type UploadResponse = { summary: string };
 
