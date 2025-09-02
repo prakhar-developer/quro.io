@@ -20,6 +20,7 @@
 ## 📸 Screenshots
 
 > Add screenshots in this section after deployment or while running locally.
+> https://www.youtube.com/watch?v=7bmckg5zy-E
 
 | Upload PDF | Summary View |Challenge ME |
 |------------|---------------|---------------|
