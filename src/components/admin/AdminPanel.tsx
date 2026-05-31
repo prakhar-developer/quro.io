@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, X, Users, Activity, HardDrive, Cpu, CheckCircle2, MoreVertical, Search, ShieldAlert, Trash2, Mail, Send, Loader2 } from 'lucide-react';
+import { Shield, X, Users, Activity, HardDrive, CheckCircle2, Search, ShieldAlert, Trash2, Mail, Send, Loader2 } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { fetchAdminStats, fetchAdminUsers, toggleAdminStatus, deleteUser, sendBroadcastEmail } from '../../services/api';
 import type { UserProfile } from '../../services/api';
