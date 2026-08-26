@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
 
+    # httpSMS Gateway Settings
+    HTTPSMS_API_KEY: Optional[str] = None
+    HTTPSMS_FROM_NUMBER: Optional[str] = None
+    HTTPSMS_SERVER_URL: str = "https://api.httpsms.com"
+    MAX_DAILY_SMS_LIMIT: int = 100
+
     # Embedding & Rerank Models
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
     RERANK_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"

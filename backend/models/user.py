@@ -9,10 +9,15 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=True)
+    hashed_password = Column(String, nullable=True)
     api_key = Column(String, unique=True, default=lambda: str(uuid.uuid4()))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    # Mobile Auth (Phone + OTP via httpSMS)
+    phone_number = Column(String, unique=True, index=True, nullable=True)
+    phone_otp = Column(String, nullable=True)
+    phone_otp_expires_at = Column(DateTime, nullable=True)
     
     # Administration and Role-Based Access
     is_admin = Column(Boolean, default=False)

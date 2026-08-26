@@ -51,6 +51,9 @@ def run_migrations(engine):
             ("reset_password_otp",              "VARCHAR"),
             ("reset_password_otp_expires_at",   "TIMESTAMP"),
             ("google_id",                       "VARCHAR"),
+            ("phone_number",                    "VARCHAR"),
+            ("phone_otp",                       "VARCHAR"),
+            ("phone_otp_expires_at",            "TIMESTAMP"),
         ]
 
         for column_name, column_type in columns_to_add:
@@ -62,6 +65,14 @@ def run_migrations(engine):
                     logger.info(f"Migration: Added column '{column_name}' to users table.")
             except Exception:
                 # Column already exists — safe to ignore
+                pass
+
+        # Make email and hashed_password nullable for phone-only accounts
+        for col in ["email", "hashed_password"]:
+            try:
+                with conn.begin():
+                    conn.execute(text(f"ALTER TABLE users ALTER COLUMN {col} DROP NOT NULL;"))
+            except Exception:
                 pass
 
 

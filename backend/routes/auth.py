@@ -24,6 +24,7 @@ from services.email_service import (
     send_welcome_email_task,
     send_password_reset_otp_task,
 )
+from services.sms_service import send_sms_otp, format_indian_phone_number
 
 router = APIRouter()
 
@@ -67,6 +68,13 @@ class ResetPasswordSchema(BaseModel):
 class GoogleTokenSchema(BaseModel):
     token: str
 
+class MobileOtpRequestSchema(BaseModel):
+    phone_number: str
+
+class MobileOtpVerifySchema(BaseModel):
+    phone_number: str
+    otp: str
+
 
 # ─── Helper ───────────────────────────────────────────────────────────────────
 
@@ -77,6 +85,7 @@ def _user_payload(user: User) -> dict:
     return {
         "id": user.id,
         "email": user.email,
+        "phone_number": user.phone_number,
         "api_key": user.api_key,
         "is_admin": user.is_admin,
         "is_verified": user.is_verified,
@@ -471,6 +480,75 @@ async def google_login(payload: GoogleTokenSchema, db: Session = Depends(get_db)
     }
 
 
+# ─── Mobile Auth Workflows (httpSMS) ──────────────────────────────────────────
+
+@router.post("/mobile/request-otp")
+async def request_mobile_otp(data: MobileOtpRequestSchema, db: Session = Depends(get_db)):
+    """Generate and send OTP to mobile number via httpSMS."""
+    phone = format_indian_phone_number(data.phone_number)
+    
+    if len(phone) < 10:
+        raise HTTPException(status_code=400, detail="Invalid phone number format.")
+
+    otp = _generate_otp()
+    expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=5)
+
+    user = db.query(User).filter(User.phone_number == phone).first()
+    if not user:
+        user = User(
+            phone_number=phone,
+            is_verified=False,
+            phone_otp=otp,
+            phone_otp_expires_at=expires_at,
+        )
+        db.add(user)
+    else:
+        user.phone_otp = otp
+        user.phone_otp_expires_at = expires_at
+
+    db.commit()
+
+    sms_res = await send_sms_otp(phone, otp)
+
+    return {
+        "message": "OTP sent successfully to your mobile number.",
+        "phone_number": phone,
+        "mode": sms_res.get("mode", "dev"),
+    }
+
+
+@router.post("/mobile/verify-otp")
+async def verify_mobile_otp(data: MobileOtpVerifySchema, db: Session = Depends(get_db)):
+    """Verify Mobile OTP and log in / register the user."""
+    phone = format_indian_phone_number(data.phone_number)
+    user = db.query(User).filter(User.phone_number == phone).first()
+
+    if not user or not user.phone_otp:
+        raise HTTPException(status_code=400, detail="OTP was not requested for this phone number.")
+
+    if user.phone_otp_expires_at and datetime.datetime.utcnow() > user.phone_otp_expires_at:
+        raise HTTPException(status_code=400, detail="OTP has expired. Please request a new code.")
+
+    if user.phone_otp != data.otp.strip():
+        raise HTTPException(status_code=400, detail="Invalid OTP code.")
+
+    user.is_verified = True
+    user.phone_otp = None
+    user.phone_otp_expires_at = None
+    db.commit()
+
+    access_token = create_access_token(
+        data={"sub": user.email or user.phone_number or user.id},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": _user_payload(user),
+    }
+
+
 # ─── Current User Helpers (used by other routes) ─────────────────────────────
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
@@ -484,13 +562,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        sub: str = payload.get("sub")
+        if sub is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
 
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(User).filter((User.email == sub) | (User.phone_number == sub) | (User.id == sub)).first()
     if user is None:
         raise credentials_exception
     return user
@@ -507,13 +585,13 @@ async def get_optional_current_user(
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        sub: str = payload.get("sub")
+        if sub is None:
             return None
     except JWTError:
         return None
 
-    return db.query(User).filter(User.email == email).first()
+    return db.query(User).filter((User.email == sub) | (User.phone_number == sub) | (User.id == sub)).first()
 
 
 async def admin_required(current_user: User = Depends(get_current_user)) -> User:

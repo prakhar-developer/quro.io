@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Cpu, Shield, Globe, ArrowRight, Loader2, BookOpen, Zap, History, CheckCircle2, Mail } from 'lucide-react';
+import { X, Cpu, Shield, Globe, ArrowRight, Loader2, BookOpen, Zap, History, CheckCircle2, Mail, Smartphone } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAppStore, type UserProfile } from '../../store/appStore';
-import { loginUser, registerUser, verifyOtp, resendOtp, requestLoginOtp, verifyLoginOtp, forgotPassword, resetPassword, googleLogin } from '../../services/api';
+import { 
+  loginUser, registerUser, verifyOtp, resendOtp, requestLoginOtp, verifyLoginOtp, 
+  forgotPassword, resetPassword, googleLogin, requestMobileOtp, verifyMobileOtp 
+} from '../../services/api';
 
-type AuthMode = 'login' | 'register' | 'verify' | 'login-otp' | 'forgot-password' | 'reset-password';
+type AuthMode = 'login' | 'register' | 'verify' | 'login-otp' | 'forgot-password' | 'reset-password' | 'mobile-input' | 'mobile-otp';
 
 interface AuthResponse {
   access_token: string;
@@ -24,7 +27,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
   } = useAppStore();
   
   const [mode, setMode] = useState<AuthMode>('login');
+  const [authMethod, setAuthMethod] = useState<'email' | 'mobile'>('email');
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [usePasswordless, setUsePasswordless] = useState(false);
@@ -44,7 +49,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
   useEffect(() => {
     if (!isModalOpen) {
       setMode('login');
+      setAuthMethod('email');
       setEmail('');
+      setPhoneNumber('');
       setPassword('');
       setOtp('');
       setError('');
@@ -90,7 +97,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
     setIsLoading(true);
 
     try {
-      if (mode === 'login') {
+      if (mode === 'mobile-input') {
+        const res = await requestMobileOtp(phoneNumber);
+        setMessage(res.mode === 'dev' ? 'OTP generated! (Check server console in Dev Mode)' : 'OTP sent to your mobile number!');
+        setMode('mobile-otp');
+        setResendCooldown(30);
+      } else if (mode === 'mobile-otp') {
+        const data = await verifyMobileOtp(phoneNumber, otp);
+        await handleSuccess(data);
+      } else if (mode === 'login') {
         if (usePasswordless) {
           await requestLoginOtp(email);
           setMessage('Login code sent! Please check your inbox.');
@@ -98,8 +113,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
           setResendCooldown(30);
         } else {
           try {
-            const data = await loginUser(email, password);
-            await handleSuccess(data);
+            await loginUser(email, password);
+            setMessage('Login code sent! Please check your inbox.');
+            setMode('login-otp');
+            setPassword('');
+            setResendCooldown(30);
           } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : '';
             if (errorMsg === "EMAIL_NOT_VERIFIED") {
@@ -146,7 +164,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
     setIsLoading(true);
     setError('');
     try {
-      if (mode === 'verify') {
+      if (mode === 'mobile-otp') {
+        await requestMobileOtp(phoneNumber);
+        setMessage('OTP code resent to your mobile number.');
+      } else if (mode === 'verify') {
         await resendOtp(email, 'signup');
         setMessage('Verification code resent successfully.');
       } else if (mode === 'login-otp') {
@@ -244,18 +265,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
               <span className="text-sm font-bold text-white">quro<span className="text-emerald-500">.</span>io</span>
             </div>
 
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-bold text-white">
                   {mode === 'login' ? 'Welcome back' : 
                    mode === 'register' ? 'Create account' : 
+                   mode === 'mobile-input' ? 'Mobile Sign In' :
+                   mode === 'mobile-otp' ? 'Verify Mobile OTP' :
                    mode === 'forgot-password' ? 'Reset Password' :
                    mode === 'reset-password' ? 'Set New Password' :
                    'Verify Email'}
                 </h3>
-                {pendingFile && (mode === 'login' || mode === 'register') && (
+                {pendingFile && (mode === 'login' || mode === 'register' || mode === 'mobile-input') && (
                   <p className="text-[10px] text-emerald-400/80 mt-1">
                     Sign in to continue uploading <span className="font-medium text-emerald-400">{pendingFile.name}</span>
+                  </p>
+                )}
+                {mode === 'mobile-otp' && (
+                  <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5">
+                    <Smartphone className="w-3 h-3 text-emerald-500" /> OTP sent to <span className="text-white font-medium">{phoneNumber}</span>
                   </p>
                 )}
                 {(mode === 'verify' || mode === 'login-otp' || mode === 'reset-password') && (
@@ -272,6 +300,34 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
               </button>
             </div>
 
+            {/* Auth Method Selector Tabs (Email vs Mobile) */}
+            {(mode === 'login' || mode === 'register' || mode === 'mobile-input') && (
+              <div className="flex p-1 bg-white/[0.04] rounded-xl border border-white/[0.06] mb-4">
+                <button
+                  type="button"
+                  onClick={() => { setAuthMethod('email'); setMode('login'); setError(''); setMessage(''); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    authMethod === 'email' && mode !== 'mobile-input'
+                      ? 'bg-emerald-500 text-black shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Mail className="w-3.5 h-3.5" /> Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAuthMethod('mobile'); setMode('mobile-input'); setError(''); setMessage(''); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    authMethod === 'mobile' || mode === 'mobile-input'
+                      ? 'bg-emerald-500 text-black shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Smartphone className="w-3.5 h-3.5" /> Mobile OTP
+                </button>
+              </div>
+            )}
+
             <AnimatePresence mode="wait">
               <motion.form
                 key={mode}
@@ -282,6 +338,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
                 onSubmit={handleSubmit}
                 className="flex flex-col gap-4 flex-1"
               >
+                {/* Mobile Input Mode */}
+                {mode === 'mobile-input' && (
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-slate-600 uppercase tracking-widest flex items-center gap-1">
+                        Indian Mobile Number (+91)
+                      </label>
+                      <div className="flex gap-2">
+                        <div className="flex items-center justify-center px-3 py-2 bg-white/[0.04] border border-white/[0.1] rounded-xl text-xs font-medium text-emerald-400">
+                          🇮🇳 +91
+                        </div>
+                        <input
+                          type="tel"
+                          value={phoneNumber}
+                          onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9+]/g, ''))}
+                          placeholder="9876543210"
+                          className="field flex-1"
+                          required
+                          autoFocus
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-500">
+                        An OTP code will be sent to your mobile phone via httpSMS.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Email / Register / Forgot Password Mode */}
                 {(mode === 'login' || mode === 'register' || mode === 'forgot-password') && (
                   <div className="space-y-3">
                     <div className="space-y-1.5">
@@ -341,11 +426,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
                   </div>
                 )}
 
-                {(mode === 'verify' || mode === 'login-otp' || mode === 'reset-password') && (
-                  <div className="space-y-3 py-4">
+                {/* OTP Verification Views (Email & Mobile) */}
+                {(mode === 'verify' || mode === 'login-otp' || mode === 'mobile-otp' || mode === 'reset-password') && (
+                  <div className="space-y-3 py-2">
                     <div className="space-y-1.5 text-center">
-                      <label className="text-[10px] text-slate-500 uppercase tracking-widest block mb-4">
-                        Enter 6-digit Code
+                      <label className="text-[10px] text-slate-500 uppercase tracking-widest block mb-3">
+                        Enter 6-digit OTP Code
                       </label>
                       <input
                         type="text"
@@ -400,13 +486,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
 
                 <button
                   type="submit"
-                  disabled={isLoading || ((mode === 'verify' || mode === 'login-otp' || mode === 'reset-password') && otp.length !== 6)}
+                  disabled={isLoading || ((mode === 'verify' || mode === 'login-otp' || mode === 'mobile-otp' || mode === 'reset-password') && otp.length !== 6)}
                   className="w-full btn-solid justify-center py-3 gap-2 text-xs mt-2"
                 >
                   {isLoading
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     : <>
                         {mode === 'login' ? (usePasswordless ? 'Send Code' : 'Sign In') : 
+                         mode === 'mobile-input' ? 'Send Mobile OTP' :
                          mode === 'register' ? 'Create Account' : 
                          mode === 'forgot-password' ? 'Send Reset Code' :
                          'Verify Code'} 
@@ -415,9 +502,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
                   }
                 </button>
 
-                {(mode === 'login' || mode === 'register') && (
-                  <div className="pt-3">
-                    <div className="relative flex items-center mb-4">
+                {(mode === 'login' || mode === 'register' || mode === 'mobile-input') && (
+                  <div className="pt-2">
+                    <div className="relative flex items-center mb-3">
                       <div className="flex-grow border-t border-white/[0.06]"></div>
                       <span className="flex-shrink-0 mx-4 text-[10px] text-slate-600 uppercase tracking-widest">or</span>
                       <div className="flex-grow border-t border-white/[0.06]"></div>
@@ -439,7 +526,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
                   </div>
                 )}
 
-                {(mode === 'verify' || mode === 'login-otp' || mode === 'reset-password') && (
+                {(mode === 'verify' || mode === 'login-otp' || mode === 'mobile-otp' || mode === 'reset-password') && (
                   <div className="text-center mt-2">
                     <button
                       type="button"
@@ -455,13 +542,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccessCallback }) => {
                 )}
 
                 <div className="text-center">
-                  {(mode === 'login' || mode === 'register' || mode === 'forgot-password') && (
+                  {(mode === 'login' || mode === 'register' || mode === 'forgot-password' || mode === 'mobile-input') && (
                     <button
                       type="button"
-                      onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); setMessage(''); }}
+                      onClick={() => { 
+                        if (mode === 'mobile-input') {
+                          setMode('login'); setAuthMethod('email'); 
+                        } else {
+                          setMode(mode === 'login' ? 'register' : 'login'); 
+                        }
+                        setError(''); setMessage(''); 
+                      }}
                       className="text-[10px] text-emerald-500/60 hover:text-emerald-400 transition-colors"
                     >
-                      {mode === 'login' ? "Don't have an account? Sign up free" : 'Back to sign in'}
+                      {mode === 'login' ? "Don't have an account? Sign up free" : mode === 'mobile-input' ? 'Sign in with Email instead' : 'Back to sign in'}
                     </button>
                   )}
                 </div>

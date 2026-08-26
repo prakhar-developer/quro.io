@@ -31,8 +31,9 @@ export const Header: React.FC = () => {
     setDropdownOpen(false);
   };
 
-  // Initials avatar
-  const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : '??';
+  // Identifier & Initials avatar
+  const identifier = user?.email || user?.phone_number || 'User';
+  const initials = identifier.replace('+', '').slice(0, 2).toUpperCase();
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#08080c]/90 backdrop-blur-xl">
@@ -86,7 +87,7 @@ export const Header: React.FC = () => {
                   <span className="text-[9px] font-bold text-emerald-400">{initials}</span>
                 </div>
                 <span className="text-[10px] text-slate-400 hidden md:block max-w-[120px] truncate">
-                  {user.email}
+                  {user.email || user.phone_number}
                 </span>
                 <ChevronDown className={`w-3 h-3 text-slate-600 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>

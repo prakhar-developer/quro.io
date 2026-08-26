@@ -24,7 +24,8 @@ export async function loginUser(email: string, password: string) {
     }
     throw new Error(data.detail || 'Login failed');
   }
-  return data as { access_token: string; token_type: string; user: UserProfile };
+  // Backend returns {status: "otp_sent", message: "...", email: "..."}
+  return data as { status: string; message: string; email: string };
 }
 
 export async function registerUser(email: string, password: string) {
@@ -113,6 +114,28 @@ export async function googleLogin(token: string) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || 'Google Login failed');
+  return data as { access_token: string; token_type: string; user: UserProfile };
+}
+
+export async function requestMobileOtp(phone_number: string) {
+  const res = await fetch(`${BASE_URL}/api/auth/mobile/request-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone_number }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Failed to send OTP to mobile number');
+  return data as { message: string; phone_number: string; mode: string };
+}
+
+export async function verifyMobileOtp(phone_number: string, otp: string) {
+  const res = await fetch(`${BASE_URL}/api/auth/mobile/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone_number, otp }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Invalid OTP code');
   return data as { access_token: string; token_type: string; user: UserProfile };
 }
 

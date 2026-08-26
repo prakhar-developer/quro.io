@@ -7,12 +7,19 @@ import uuid
 
 class VectorStore:
     def __init__(self):
+        url = settings.QDRANT_URL
+        if "cloud.qdrant.io" in url and ":6333" not in url:
+            url = f"{url.rstrip('/')}:6333"
         self.client = QdrantClient(
-            url=settings.QDRANT_URL,
+            url=url,
             api_key=settings.QDRANT_API_KEY,
             timeout=300
         )
-        self._ensure_collection()
+        try:
+            self._ensure_collection()
+        except Exception as err:
+            import logging
+            logging.getLogger("quro.vectorstore").warning(f"Qdrant connection warning: {err}")
 
     def _ensure_collection(self):
         collections = self.client.get_collections().collections

@@ -12,7 +12,8 @@ export interface Message {
 
 export interface UserProfile {
   id: string;
-  email: string;
+  email?: string;
+  phone_number?: string;
   api_key: string;
   is_admin?: boolean;
 }
